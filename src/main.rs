@@ -1,6 +1,8 @@
+use byteorder::{ByteOrder, LittleEndian};
+
 fn main() {
     let mut buffer = Buffer {
-        data: &mut [0; 100][0],
+        data: &mut [0; 100],
         size: 100,
         index: 0,
     };
@@ -12,24 +14,19 @@ fn main() {
     println!("{:?}", read_integer(&mut buffer));
 }
 
-struct Buffer {
-    data: *mut u8,
+struct Buffer<'a> {
+    data: &'a mut [u8],
     size: usize,
     index: usize,
 }
 
 fn write_integer(buffer: &mut Buffer, value: u32) {
     assert!(buffer.index + 4 <= buffer.size);
-    unsafe {
-        *(buffer.data.add(buffer.index) as *mut u32) = value;
-    }
+    LittleEndian::write_u32(&mut buffer.data[buffer.index..buffer.index+4], value);
     buffer.index += 4;
 }
 
 fn read_integer(buffer: &mut Buffer) -> u32 {
     assert!(buffer.index + 4 <= buffer.size);
-    let value = unsafe {
-        *(buffer.data.add(buffer.index) as *const u32)
-    };
-    return value;
+    return LittleEndian::read_u32(&mut buffer.data[buffer.index..buffer.index+4]);
 }

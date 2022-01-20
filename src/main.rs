@@ -2,16 +2,38 @@ use byteorder::{ByteOrder, LittleEndian};
 
 fn main() {
     let mut buffer = Buffer::new(100);
+    let mut packet_a = PacketA { x: 10, y: 15, z: 20 };
+    packet_a.write(&mut buffer);
+    println!("{:?}", packet_a);
 
-    write_integer(&mut buffer, 42);
-    write_short(&mut buffer, 17);
-    write_char(&mut buffer, 2);
-    
     buffer.index = 0;
+    
+    let mut packet_b = PacketA { x: 0, y: 0, z: 0 };
+    packet_b.read(&mut buffer);
+    println!("{:?}", packet_b);
 
-    println!("{:?}", read_integer(&mut buffer));
-    println!("{:?}", read_short(&mut buffer));
-    println!("{:?}", read_char(&mut buffer));
+    assert_eq!(packet_a, packet_b);
+}
+
+#[derive(Debug, Eq, PartialEq)]
+struct PacketA {
+    x: u32,
+    y: u32,
+    z: u32,
+}
+
+impl PacketA {
+    fn write(&mut self, buffer: &mut Buffer) {
+        write_integer(buffer, self.x);
+        write_integer(buffer, self.y);
+        write_integer(buffer, self.z);
+    }
+
+    fn read(&mut self, buffer: &mut Buffer) {
+        self.x = read_integer(buffer);
+        self.y = read_integer(buffer);
+        self.z = read_integer(buffer);
+    }
 }
 
 struct Buffer {
@@ -42,7 +64,7 @@ fn write_short(buffer: &mut Buffer, value: u16) {
     buffer.index += 2;
 }
 
-fn write_char(buffer: &mut Buffer, value: u8) {
+fn write_byte(buffer: &mut Buffer, value: u8) {
     assert!(buffer.index <= buffer.size);
     buffer.data[buffer.index+1] = value;
     buffer.index += 1;
@@ -60,7 +82,7 @@ fn read_short(buffer: &mut Buffer) -> u16 {
     LittleEndian::read_u16(&mut buffer.data[buffer.index-2..buffer.index])
 }
 
-fn read_char(buffer: &mut Buffer) -> u8 {
+fn read_byte(buffer: &mut Buffer) -> u8 {
     assert!(buffer.index <= buffer.size);
     buffer.data[buffer.index+1]
 }

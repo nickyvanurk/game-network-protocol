@@ -1,6 +1,7 @@
 use byteorder::{ByteOrder, LittleEndian};
 
 fn main() {
+    //---------------Packet A---------------
     let mut buffer = Buffer::new(100);
     let mut packet_a = PacketA { x: 10, y: 15, z: 20 };
     packet_a.write(&mut buffer);
@@ -9,6 +10,20 @@ fn main() {
     buffer.index = 0;
     
     let mut packet_b = PacketA { x: 0, y: 0, z: 0 };
+    packet_b.read(&mut buffer);
+    println!("{:?}", packet_b);
+
+    assert_eq!(packet_a, packet_b);
+
+    //---------------Packet B---------------
+    let mut buffer = Buffer::new(100);
+    let mut packet_a = PacketB { elements: vec![1, 2, 3, 4, 5], num_elements: 5 };
+    packet_a.write(&mut buffer);
+    println!("{:?}", packet_a);
+
+    buffer.index = 0;
+    
+    let mut packet_b = PacketB { num_elements: 0, elements: vec![] };
     packet_b.read(&mut buffer);
     println!("{:?}", packet_b);
 
@@ -33,6 +48,28 @@ impl PacketA {
         self.x = read_integer(buffer);
         self.y = read_integer(buffer);
         self.z = read_integer(buffer);
+    }
+}
+
+#[derive(Debug, Eq, PartialEq)]
+struct PacketB {
+    num_elements: u32,
+    elements: Vec<u32>,
+}
+
+impl PacketB {
+    fn write(&mut self, buffer: &mut Buffer) {
+        write_integer(buffer, self.num_elements);
+        for i in 0..self.num_elements {
+            write_integer(buffer, self.elements[i as usize]);
+        }
+    }
+
+    fn read(&mut self, buffer: &mut Buffer) {
+        self.num_elements = read_integer(buffer);
+        for i in 0..self.num_elements {
+            self.elements.push(read_integer(buffer));
+        }
     }
 }
 

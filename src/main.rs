@@ -53,15 +53,15 @@ struct PacketA {
 
 impl PacketA {
     fn write(&mut self, buffer: &mut Buffer) {
-        write_integer(buffer, self.x);
-        write_integer(buffer, self.y);
-        write_integer(buffer, self.z);
+        write_int(buffer, self.x);
+        write_int(buffer, self.y);
+        write_int(buffer, self.z);
     }
 
     fn read(&mut self, buffer: &mut Buffer) {
-        self.x = read_integer(buffer);
-        self.y = read_integer(buffer);
-        self.z = read_integer(buffer);
+        self.x = read_int(buffer);
+        self.y = read_int(buffer);
+        self.z = read_int(buffer);
     }
 }
 
@@ -73,16 +73,16 @@ struct PacketB {
 
 impl PacketB {
     fn write(&mut self, buffer: &mut Buffer) {
-        write_integer(buffer, self.num_elements);
+        write_int(buffer, self.num_elements);
         for i in 0..self.num_elements {
-            write_integer(buffer, self.elements[i as usize]);
+            write_int(buffer, self.elements[i as usize]);
         }
     }
 
     fn read(&mut self, buffer: &mut Buffer) {
-        self.num_elements = read_integer(buffer);
+        self.num_elements = read_int(buffer);
         for i in 0..self.num_elements {
-            self.elements.push(read_integer(buffer));
+            self.elements.push(read_int(buffer));
         }
     }
 }
@@ -98,13 +98,13 @@ impl PacketC {
     fn write(&mut self, buffer: &mut Buffer) {
         write_byte(buffer, self.x as u8);
         write_short(buffer, self.y);
-        write_integer(buffer, self.z);
+        write_int(buffer, self.z);
     }
 
     fn read(&mut self, buffer: &mut Buffer) {
         self.x = read_byte(buffer) == 1;
         self.y = read_short(buffer);
-        self.z = read_integer(buffer);
+        self.z = read_int(buffer);
     }
 }
 
@@ -124,7 +124,7 @@ impl Buffer {
     }
 }
 
-fn write_integer(buffer: &mut Buffer, value: u32) {
+fn write_int(buffer: &mut Buffer, value: u32) {
     assert!(buffer.index + 4 <= buffer.size);
     LittleEndian::write_u32(&mut buffer.data[buffer.index..buffer.index+4], value);
     buffer.index += 4;
@@ -142,7 +142,7 @@ fn write_byte(buffer: &mut Buffer, value: u8) {
     buffer.index += 1;
 }
 
-fn read_integer(buffer: &mut Buffer) -> u32 {
+fn read_int(buffer: &mut Buffer) -> u32 {
     assert!(buffer.index + 4 <= buffer.size);
     buffer.index += 4;
     LittleEndian::read_u32(&mut buffer.data[buffer.index-4..buffer.index])

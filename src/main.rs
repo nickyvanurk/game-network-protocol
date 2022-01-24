@@ -1,6 +1,12 @@
 use byteorder::{ByteOrder, LittleEndian};
 
+const MAX_PACKET_SIZE: usize = 256 * 1024;
+
 fn main() {
+    let write_buffer = [0; MAX_PACKET_SIZE];
+    let bit_writer = BitWriter::new(&write_buffer);
+    println!("{:?}", bit_writer);
+
     //---------------Packet A---------------
     let mut buffer = Buffer::new(100);
     let packet = Packet::A(PacketA { x: 10, y: 15, z: 20 });
@@ -23,6 +29,54 @@ fn main() {
     buffer.index = 0;
     println!("{:?}", Packet::new(&mut buffer));
 }
+
+#[derive(Debug)]
+struct BitWriter<'a> {
+    buffer: &'a [u32],
+    scratch: u64,
+    num_bits: u32,
+    num_words: u32,
+    bits_written: u32,
+    word_index: u32,
+    scratch_bits: u32,
+}
+
+impl<'a> BitWriter<'a> {
+    fn new(buffer: &'a [u32]) -> Self {
+        let buffer_size = buffer.len();
+        assert!(buffer_size % 4 == 0);
+        Self {
+            buffer: buffer,
+            scratch: 0,
+            num_words: (buffer_size / 4) as u32,
+            num_bits: (buffer_size / 4) as u32 * 32,
+            bits_written: 0,
+            word_index: 0,
+            scratch_bits: 0,
+        }
+    }
+}
+
+// struct WriteStream {
+//     is_writing: bool,
+//     is_reading: bool,
+// }
+
+// impl WriteStream {
+//     fn new(buffer: &Buffer, bytes: i32) -> Self {
+//         Self {
+//             is_writing: true,
+//             is_reading: false,
+//         }
+//     }
+//     fn serialize_int(&self, value: i32, min: i32, max: i32) -> bool {
+//         assert!(min < max);
+//         assert!(value >= min);
+//         assert!(value <= max);
+//         let unsigned_value: u32 = (value - min) as u32;
+//         true
+//     }
+// }
 
 // #[derive(Debug)]
 enum PacketType { PacketA, PacketB, PacketC }

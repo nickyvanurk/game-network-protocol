@@ -1,11 +1,15 @@
 use byteorder::{ByteOrder, LittleEndian};
 
-const MAX_PACKET_SIZE: usize = 256 * 1024;
+const MAX_PACKET_SIZE: usize = 20;
 
 fn main() {
-    let write_buffer = [0; MAX_PACKET_SIZE];
-    let bit_writer = BitWriter::new(&write_buffer);
-    println!("{:?}", bit_writer);
+    let mut write_buffer = [0; MAX_PACKET_SIZE];
+    let mut writer = BitWriter::new(&mut write_buffer);
+    
+    println!("{:?}", writer);
+    writer.write_bits(42, 6);
+    writer.flush_bits();
+    println!("{:?}", writer);
 
     //---------------Packet A---------------
     let mut buffer = Buffer::new(100);
@@ -32,51 +36,55 @@ fn main() {
 
 #[derive(Debug)]
 struct BitWriter<'a> {
-    buffer: &'a [u32],
+    buffer: &'a mut [u32],
     scratch: u64,
     num_bits: u32,
-    num_words: u32,
+    num_words: usize,
     bits_written: u32,
-    word_index: u32,
+    word_index: usize,
     scratch_bits: u32,
 }
 
 impl<'a> BitWriter<'a> {
-    fn new(buffer: &'a [u32]) -> Self {
+    fn new(buffer: &'a mut [u32]) -> Self {
         let buffer_size = buffer.len();
         assert!(buffer_size % 4 == 0);
         Self {
             buffer: buffer,
             scratch: 0,
-            num_words: (buffer_size / 4) as u32,
+            num_words: (buffer_size / 4),
             num_bits: (buffer_size / 4) as u32 * 32,
             bits_written: 0,
             word_index: 0,
             scratch_bits: 0,
         }
     }
+
+    fn write_bits(&mut self, mut value: u32, bits: u32) {
+        assert!(self.bits_written + bits <= self.num_bits);
+
+        value &= ((1_u64 << bits) - 1) as u32; // is u64 required here?
+
+        self.scratch |= (value as u64) << self.scratch_bits;
+        self.scratch_bits += bits;
+
+        if self.scratch_bits >= 32 {
+            self.flush_bits();
+        }
+
+        self.bits_written += bits;
+    }
+
+    fn flush_bits(&mut self) {
+        if self.scratch_bits > 0 {
+            assert!(self.word_index < self.num_words);
+            self.buffer[self.word_index] = (self.scratch & 0xFFFFFFFF) as u32;
+            self.scratch >>= 32;
+            self.scratch_bits -= if self.scratch_bits >= 32 { 32 } else { self.scratch_bits };
+            self.word_index += 1;
+        }
+    }
 }
-
-// struct WriteStream {
-//     is_writing: bool,
-//     is_reading: bool,
-// }
-
-// impl WriteStream {
-//     fn new(buffer: &Buffer, bytes: i32) -> Self {
-//         Self {
-//             is_writing: true,
-//             is_reading: false,
-//         }
-//     }
-//     fn serialize_int(&self, value: i32, min: i32, max: i32) -> bool {
-//         assert!(min < max);
-//         assert!(value >= min);
-//         assert!(value <= max);
-//         let unsigned_value: u32 = (value - min) as u32;
-//         true
-//     }
-// }
 
 // #[derive(Debug)]
 enum PacketType { PacketA, PacketB, PacketC }

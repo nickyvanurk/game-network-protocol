@@ -5,11 +5,15 @@ const MAX_PACKET_SIZE: usize = 20;
 fn main() {
     let mut write_buffer = [0; MAX_PACKET_SIZE];
     let mut writer = BitWriter::new(&mut write_buffer);
-    
     println!("{:?}", writer);
+
     writer.write_bits(42, 6);
     writer.flush_bits();
     println!("{:?}", writer);
+
+    let mut read_buffer = [0; MAX_PACKET_SIZE];
+    let reader = BitReader::new(&mut read_buffer);
+    println!("{:?}", reader);
 
     //---------------Packet A---------------
     let mut buffer = Buffer::new(100);
@@ -82,6 +86,33 @@ impl<'a> BitWriter<'a> {
             self.scratch >>= 32;
             self.scratch_bits -= if self.scratch_bits >= 32 { 32 } else { self.scratch_bits };
             self.word_index += 1;
+        }
+    }
+}
+
+#[derive(Debug)]
+struct BitReader<'a> {
+    buffer: &'a mut [u32],
+    scratch: u64,
+    num_bits: u32,
+    num_words: usize,
+    bits_read: u32,
+    word_index: usize,
+    scratch_bits: u32,
+}
+
+impl<'a> BitReader<'a> {
+    fn new(buffer: &'a mut [u32]) -> Self {
+        let buffer_size = buffer.len();
+        assert!(buffer_size % 4 == 0);
+        Self {
+            buffer: buffer,
+            scratch: 0,
+            num_words: (buffer_size + 3) / 4,
+            num_bits: (buffer_size * 8) as u32,
+            bits_read: 0,
+            word_index: 0,
+            scratch_bits: 0,
         }
     }
 }

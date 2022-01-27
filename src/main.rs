@@ -3,17 +3,21 @@ use byteorder::{ByteOrder, LittleEndian};
 const MAX_PACKET_SIZE: usize = 20;
 
 fn main() {
-    let mut write_buffer = [0; MAX_PACKET_SIZE];
-    let mut writer = BitWriter::new(&mut write_buffer);
+    let mut buffer = [0; MAX_PACKET_SIZE];
+    
+    let mut writer = BitWriter::new(&mut buffer);
     println!("{:?}", writer);
 
     writer.write_bits(42, 6);
     writer.flush_bits();
     println!("{:?}", writer);
 
-    let mut read_buffer = [0; MAX_PACKET_SIZE];
-    let reader = BitReader::new(&mut read_buffer);
+    let mut reader = BitReader::new(&mut buffer);
     println!("{:?}", reader);
+
+    let output = reader.read_bits(6);
+    println!("{:?}", reader);
+    println!("Output: {:?}\n", output);
 
     //---------------Packet A---------------
     let mut buffer = Buffer::new(100);
@@ -65,6 +69,7 @@ impl<'a> BitWriter<'a> {
     }
 
     fn write_bits(&mut self, mut value: u32, bits: u32) {
+        assert!(bits <= 32);
         assert!(self.bits_written + bits <= self.num_bits);
 
         value &= ((1_u64 << bits) - 1) as u32; // is u64 required here?
@@ -114,6 +119,31 @@ impl<'a> BitReader<'a> {
             word_index: 0,
             scratch_bits: 0,
         }
+    }
+
+    fn read_bits(&mut self, bits: u32) -> u32 {
+        assert!(bits <= 32);
+        assert!(self.bits_read + bits <= self.num_bits);
+
+        self.bits_read += bits;
+
+        assert!(self.scratch_bits <= 64);
+
+        if (self.scratch_bits < bits) {
+            assert!(self.word_index < self.num_words);
+            self.scratch |= (self.buffer[self.word_index] as u64) << self.scratch_bits;
+            self.scratch_bits += 32;
+            self.word_index += 1;
+        }
+
+        assert!(self.scratch_bits >= bits);
+
+        let output = self.scratch & ((1_u64 << bits) - 1);
+
+        self.scratch >>= bits;
+        self.scratch_bits -= bits;
+
+        output as u32
     }
 }
 

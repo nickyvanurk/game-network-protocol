@@ -12,6 +12,10 @@ fn main() {
     writer.flush_bits();
     println!("{:?}", writer);
 
+    writer.write_align();
+    writer.flush_bits();
+    println!("{:?}\n", writer);
+
     let mut reader = BitReader::new(&mut buffer);
     println!("{:?}", reader);
 
@@ -91,6 +95,15 @@ impl<'a> BitWriter<'a> {
             self.scratch >>= 32;
             self.scratch_bits -= if self.scratch_bits >= 32 { 32 } else { self.scratch_bits };
             self.word_index += 1;
+        }
+    }
+
+    fn write_align(&mut self) {
+        let remainder_bits = self.bits_written % 8;
+        if  remainder_bits != 0 {
+            let zero = 0_u32;
+            self.write_bits(zero, 8 - remainder_bits);
+            assert!((self.bits_written % 8) == 0);
         }
     }
 }

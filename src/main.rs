@@ -21,7 +21,11 @@ fn main() {
 
     let output = reader.read_bits(6);
     println!("{:?}", reader);
-    println!("Output: {:?}\n", output);
+    println!("Output: {:?}", output);
+
+    if reader.read_align() {
+        println!("Read align: {:?}\n", reader);
+    }
 
     //---------------Packet A---------------
     let mut buffer = Buffer::new(100);
@@ -157,6 +161,19 @@ impl<'a> BitReader<'a> {
         self.scratch_bits -= bits;
 
         output as u32
+    }
+
+    fn read_align(&mut self) -> bool {
+        let remainder_bits = self.bits_read % 8;
+        if remainder_bits != 0 {
+            let value = self.read_bits(8 - remainder_bits);
+            assert!(self.bits_read % 8 == 0);
+            if value != 0 {
+                return false;
+            }
+        }
+
+        true
     }
 }
 

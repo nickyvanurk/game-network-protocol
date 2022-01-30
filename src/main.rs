@@ -6,21 +6,21 @@ fn main() {
     let mut buffer = [0; MAX_PACKET_SIZE];
     
     let mut writer = BitWriter::new(&mut buffer);
-    println!("{:?}", writer);
+    println!("Writer: {:?}", writer);
 
     writer.write_bits(42, 6);
     writer.flush_bits();
-    println!("{:?}", writer);
+    println!("Write 42: {:?}", writer);
 
     writer.write_align();
     writer.flush_bits();
-    println!("{:?}\n", writer);
+    println!("Write align: {:?}\n", writer);
 
     let mut reader = BitReader::new(&mut buffer);
-    println!("{:?}", reader);
+    println!("Reader: {:?}", reader);
 
     let output = reader.read_bits(6);
-    println!("{:?}", reader);
+    println!("Read 6 bits: {:?}", reader);
     println!("Output: {:?}", output);
 
     if reader.read_align() {

@@ -4,7 +4,8 @@ const MAX_PACKET_SIZE: usize = 20;
 
 fn main() {
     let mut buffer = [0; MAX_PACKET_SIZE];
-    
+
+    //---------------BitWriter------------
     let mut writer = BitWriter::new(&mut buffer);
     println!("Writer: {:?}", writer);
 
@@ -16,6 +17,15 @@ fn main() {
     writer.flush_bits();
     println!("Write align: {:?}\n", writer);
 
+    //---------------WriteStream------------
+    let mut write_stream = WriteStream::new(writer);
+    println!("{:?}", write_stream);
+
+    write_stream.serialize_integer(42, 0, 60);
+    write_stream.flush();
+    println!("{:?}\n", write_stream);
+
+    //---------------BitReader------------
     let mut reader = BitReader::new(&mut buffer);
     println!("Reader: {:?}", reader);
 
@@ -48,6 +58,44 @@ fn main() {
     println!("{:?}", packet);
     buffer.index = 0;
     println!("{:?}", Packet::new(&mut buffer));
+}
+
+trait Stream {
+    fn serialize_integer(&mut self, value: i32, min: i32, max: i32) -> bool;
+    fn flush(&mut self);
+}
+
+#[derive(Debug)]
+struct WriteStream<'a > {
+    is_writing: bool,
+    is_reading: bool,
+    writer: BitWriter<'a >,
+}
+
+impl<'a> WriteStream<'a> {
+    fn new(writer: BitWriter<'a>) -> Self {
+        Self {
+            is_writing: true,
+            is_reading: false,
+            writer,
+        }
+    }
+}
+
+impl<'a> Stream for WriteStream<'a> {
+    fn serialize_integer(&mut self, value: i32, min: i32, max: i32) -> bool {
+        assert!(min < max);
+        assert!(value >= min);
+        assert!(value <= max);
+        let bits = bits_required(min as u32, max as u32);
+        let unsigned_value = (value - min) as u32;
+        self.writer.write_bits(unsigned_value, bits);
+        true
+    }
+
+    fn flush (&mut self) {
+        self.writer.flush_bits();
+    }
 }
 
 #[derive(Debug)]
@@ -343,4 +391,27 @@ fn read_byte(buffer: &mut Buffer) -> u8 {
     assert!(buffer.index <= buffer.size);
     buffer.index += 1;
     buffer.data[buffer.index-1]
+}
+
+fn bits_required(min: u32, max: u32) -> u32 {
+    if min == max { 0 } else { log2(max - min) + 1 }
+}
+
+fn log2(x: u32) -> u32 {
+    let a = x | (x >> 1);
+    let b = a | (a >> 2);
+    let c = b | (b >> 4);
+    let d = c | (c >> 8);
+    let e = d | (d >> 16);
+    let f = e >> 1;
+    popcount(f)
+}
+
+fn popcount(x: u32) -> u32 {
+    let a = x - (( x >> 1)      & 0x55555555);
+    let b =     (( a >> 2)      & 0x33333333) + (a & 0x33333333);
+    let c =     (( b >> 4) + b) & 0x0f0f0f0f;
+    let d =   c + (c >> 8);
+    let e =   d + (d >> 16);
+    e & 0x0000003f
 }

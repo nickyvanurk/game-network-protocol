@@ -7,15 +7,15 @@ fn main() {
 
     //---------------BitWriter------------
     let mut writer = BitWriter::new(&mut buffer);
-    println!("Writer: {:?}", writer);
+    // println!("Writer: {:?}", writer);
 
-    writer.write_bits(42, 6);
-    writer.flush_bits();
-    println!("Write 42: {:?}", writer);
+    // writer.write_bits(42, 6);
+    // writer.flush_bits();
+    // println!("Write 42: {:?}", writer);
 
-    writer.write_align();
-    writer.flush_bits();
-    println!("Write align: {:?}\n", writer);
+    // writer.write_align();
+    // writer.flush_bits();
+    // println!("Write align: {:?}\n", writer);
 
     //---------------WriteStream------------
     let mut write_stream = WriteStream::new(writer);
@@ -23,19 +23,28 @@ fn main() {
 
     write_stream.serialize_integer(42, 0, 60);
     write_stream.flush();
+    println!("Write: {:?}", 42);
     println!("{:?}\n", write_stream);
 
     //---------------BitReader------------
     let mut reader = BitReader::new(&mut buffer);
-    println!("Reader: {:?}", reader);
+    // println!("Reader: {:?}", reader);
 
-    let output = reader.read_bits(6);
-    println!("Read 6 bits: {:?}", reader);
-    println!("Output: {:?}", output);
+    // let output = reader.read_bits(6);
+    // println!("Read 6 bits: {:?}", reader);
+    // println!("Output: {:?}", output);
 
-    if reader.read_align() {
-        println!("Read align: {:?}\n", reader);
-    }
+    // if reader.read_align() {
+    //     println!("Read align: {:?}\n", reader);
+    // }
+
+    //---------------ReadStream------------
+    let mut read_stream = ReadStream::new(reader);
+    println!("{:?}", read_stream);
+
+    let mut value = 0;
+    read_stream.serialize_integer(&mut value, 0, 60);
+    println!("Read: {:?}\n", value);
 
     //---------------Packet A---------------
     let mut buffer = Buffer::new(100);
@@ -60,11 +69,6 @@ fn main() {
     println!("{:?}", Packet::new(&mut buffer));
 }
 
-trait Stream {
-    fn serialize_integer(&mut self, value: i32, min: i32, max: i32) -> bool;
-    fn flush(&mut self);
-}
-
 #[derive(Debug)]
 struct WriteStream<'a > {
     is_writing: bool,
@@ -80,9 +84,7 @@ impl<'a> WriteStream<'a> {
             writer,
         }
     }
-}
 
-impl<'a> Stream for WriteStream<'a> {
     fn serialize_integer(&mut self, value: i32, min: i32, max: i32) -> bool {
         assert!(min < max);
         assert!(value >= min);
@@ -95,6 +97,37 @@ impl<'a> Stream for WriteStream<'a> {
 
     fn flush (&mut self) {
         self.writer.flush_bits();
+    }
+}
+
+#[derive(Debug)]
+struct ReadStream<'a > {
+    is_writing: bool,
+    is_reading: bool,
+    reader: BitReader<'a >,
+    bits_read: u32,
+}
+
+impl<'a> ReadStream<'a> {
+    fn new(reader: BitReader<'a>) -> Self {
+        Self {
+            is_writing: false,
+            is_reading: true,
+            reader,
+            bits_read: 0,
+        }
+    }
+
+    fn serialize_integer(&mut self, value: &mut i32, min: i32, max: i32) -> bool {
+        assert!(min < max);
+        let bits = bits_required(min as u32, max as u32);
+        if self.reader.would_overflow(bits) {
+            return false;
+        }
+        let unsigned_value = self.reader.read_bits(bits);
+        *value = unsigned_value as i32 + min;
+        self.bits_read += bits;
+        true
     }
 }
 
@@ -222,6 +255,10 @@ impl<'a> BitReader<'a> {
         }
 
         true
+    }
+
+    fn would_overflow(&self, bits: u32) -> bool {
+        self.bits_read + bits > self.num_bits
     }
 }
 

@@ -22,13 +22,16 @@ fn main() {
     println!("{:?}", write_stream);
 
     write_stream.serialize_integer(42, 0, 60);
-    write_stream.flush();
     println!("Write: {:?}", 42);
-    println!("{:?}\n", write_stream);
 
     write_stream.serialize_bits(42, 6);
-    write_stream.flush();
     println!("Write bits: {:?}", 42);
+
+    write_stream.serialize_align();
+    println!("Stream aligned");
+
+    write_stream.flush();
+    println!("Flush word");
     println!("{:?}\n", write_stream);
 
 
@@ -104,6 +107,11 @@ impl<'a> WriteStream<'a> {
     fn serialize_bits(&mut self, value: u32, bits: u32) -> bool {
         assert!(bits <= 32);
         self.writer.write_bits(value, bits);
+        true
+    }
+
+    fn serialize_align(&mut self) -> bool {
+        self.writer.write_align();
         true
     }
 

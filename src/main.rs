@@ -26,6 +26,12 @@ fn main() {
     println!("Write: {:?}", 42);
     println!("{:?}\n", write_stream);
 
+    write_stream.serialize_bits(42, 6);
+    write_stream.flush();
+    println!("Write bits: {:?}", 42);
+    println!("{:?}\n", write_stream);
+
+
     //---------------BitReader------------
     let mut reader = BitReader::new(&mut buffer);
     // println!("Reader: {:?}", reader);
@@ -92,6 +98,12 @@ impl<'a> WriteStream<'a> {
         let bits = bits_required(min as u32, max as u32);
         let unsigned_value = (value - min) as u32;
         self.writer.write_bits(unsigned_value, bits);
+        true
+    }
+
+    fn serialize_bits(&mut self, value: u32, bits: u32) -> bool {
+        assert!(bits <= 32);
+        self.writer.write_bits(value, bits);
         true
     }
 

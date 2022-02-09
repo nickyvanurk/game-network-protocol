@@ -5,20 +5,8 @@ const MAX_PACKET_SIZE: usize = 20;
 fn main() {
     let mut buffer = [0; MAX_PACKET_SIZE];
 
-    //---------------BitWriter------------
-    let mut writer = BitWriter::new(&mut buffer);
-    // println!("Writer: {:?}", writer);
-
-    // writer.write_bits(42, 6);
-    // writer.flush_bits();
-    // println!("Write 42: {:?}", writer);
-
-    // writer.write_align();
-    // writer.flush_bits();
-    // println!("Write align: {:?}\n", writer);
-
     //---------------WriteStream------------
-    let mut write_stream = WriteStream::new(writer);
+    let mut write_stream = WriteStream::new(BitWriter::new(&mut buffer));
     println!("{:?}", write_stream);
 
     write_stream.serialize_integer(42, 0, 60);

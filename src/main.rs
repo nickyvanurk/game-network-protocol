@@ -39,9 +39,13 @@ fn main() {
     let mut read_stream = ReadStream::new(reader);
     println!("{:?}", read_stream);
 
-    let mut value = 0;
-    read_stream.serialize_integer(&mut value, 0, 60);
-    println!("Read: {:?}\n", value);
+    let mut value_i32 = 0;
+    read_stream.serialize_integer(&mut value_i32, 0, 60);
+    println!("Read: {:?}", value_i32);
+
+    let mut value_u32 = 0;
+    read_stream.serialize_bits(&mut value_u32, 6);
+    println!("Read bits: {:?}\n", value_u32);
 
     //---------------Packet A---------------
     let mut buffer = Buffer::new(100);
@@ -134,6 +138,16 @@ impl<'a> ReadStream<'a> {
         }
         let unsigned_value = self.reader.read_bits(bits);
         *value = unsigned_value as i32 + min;
+        self.bits_read += bits;
+        true
+    }
+
+    fn serialize_bits(&mut self, value: &mut u32, bits: u32) -> bool {
+        assert!(bits <= 32);
+        if self.reader.would_overflow(bits) {
+            return false;
+        }
+        *value = self.reader.read_bits(bits);
         self.bits_read += bits;
         true
     }

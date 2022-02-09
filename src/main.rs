@@ -22,21 +22,8 @@ fn main() {
     println!("Flush word");
     println!("{:?}\n", write_stream);
 
-
-    //---------------BitReader------------
-    let mut reader = BitReader::new(&mut buffer);
-    // println!("Reader: {:?}", reader);
-
-    // let output = reader.read_bits(6);
-    // println!("Read 6 bits: {:?}", reader);
-    // println!("Output: {:?}", output);
-
-    // if reader.read_align() {
-    //     println!("Read align: {:?}\n", reader);
-    // }
-
     //---------------ReadStream------------
-    let mut read_stream = ReadStream::new(reader);
+    let mut read_stream = ReadStream::new(BitReader::new(&mut buffer));
     println!("{:?}", read_stream);
 
     let mut value_i32 = 0;

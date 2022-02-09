@@ -45,7 +45,12 @@ fn main() {
 
     let mut value_u32 = 0;
     read_stream.serialize_bits(&mut value_u32, 6);
-    println!("Read bits: {:?}\n", value_u32);
+    println!("Read bits: {:?}", value_u32);
+    println!("{:?}", read_stream);
+
+    read_stream.serialize_align();
+    println!("Read align");
+    println!("{:?}\n", read_stream);
 
     //---------------Packet A---------------
     let mut buffer = Buffer::new(100);
@@ -149,6 +154,15 @@ impl<'a> ReadStream<'a> {
         }
         *value = self.reader.read_bits(bits);
         self.bits_read += bits;
+        true
+    }
+
+    fn serialize_align(&mut self) -> bool {
+        let align_bits = self.reader.get_align_bits();
+        if self.reader.would_overflow(align_bits) || !self.reader.read_align() {
+            return false;
+        }
+        self.bits_read += align_bits;
         true
     }
 }
@@ -281,6 +295,10 @@ impl<'a> BitReader<'a> {
 
     fn would_overflow(&self, bits: u32) -> bool {
         self.bits_read + bits > self.num_bits
+    }
+
+    fn get_align_bits(&self) -> u32 {
+        (8 - self.bits_read % 8) % 8
     }
 }
 

@@ -18,8 +18,12 @@ fn main() {
     write_stream.serialize_align();
     println!("Stream aligned");
 
+    write_stream.serialize_bytes(&"Hello, world!", 13);
+    println!("Write bytes: Hello, world!");
+
     write_stream.flush();
-    println!("Flush word");
+    println!("Flush stream");
+    
     println!("{:?}\n", write_stream);
 
     //---------------ReadStream------------
@@ -91,6 +95,14 @@ impl<'a> WriteStream<'a> {
     fn serialize_bits(&mut self, value: u32, bits: u32) -> bool {
         assert!(bits <= 32);
         self.writer.write_bits(value, bits);
+        true
+    }
+
+    fn serialize_bytes(&mut self, data: &str, bytes: u32) -> bool {
+        if !self.serialize_align() {
+            return false;
+        }
+        self.writer.write_bytes(data, bytes);
         true
     }
 
@@ -196,6 +208,61 @@ impl<'a> BitWriter<'a> {
         self.bits_written += bits;
     }
 
+    fn write_bytes(&mut self, data: &str, bytes: u32) {
+        assert!(self.get_align_bits() == 0);
+        assert!(self.bits_written + bytes * 8 <= self.num_bits);
+        assert!(vec![0, 8, 16, 24].contains(&(self.bits_written % 32)));
+
+        let mut head_bytes = (4 - (self.bits_written % 32) / 8) % 4;
+        if head_bytes > bytes {
+            head_bytes = bytes;
+        }
+        for i in 0..head_bytes {
+            self.write_bits(data.chars().nth(i as usize).unwrap() as u32, 8);
+        }
+        if head_bytes == bytes {
+            return;
+        }
+
+        self.flush_bits();
+
+        assert!(self.get_align_bits() == 0);
+
+        let num_words = (bytes - head_bytes) / 4;
+        if num_words > 0 {
+            assert!((self.bits_written % 32) == 0);
+            unsafe {
+                let dst_ptr = &mut self.buffer[self.word_index] as *mut u32;
+                let src_ptr = &data.as_bytes()[head_bytes as usize] as *const u8;
+                std::ptr::copy_nonoverlapping(src_ptr, dst_ptr as *mut u8, num_words as usize * 4);
+            }
+            self.bits_written += num_words * 32;
+            self.word_index += num_words as usize;
+            self.scratch = 0;
+        }
+
+        assert!(self.get_align_bits() == 0);
+
+        let tail_start = head_bytes + num_words * 4;
+        let tail_bytes = bytes - tail_start;
+        assert!(tail_bytes < 4);
+        for i in 0..tail_bytes {
+            self.write_bits(data.chars().nth(tail_start as usize + i as usize).unwrap() as u32, 8);
+        }
+
+        assert!(self.get_align_bits() == 0);
+        assert!(head_bytes + num_words * 4 + tail_bytes == bytes);
+    }
+
+    fn write_align(&mut self) {
+        let remainder_bits = self.bits_written % 8;
+        if  remainder_bits != 0 {
+            let zero = 0_u32;
+            self.write_bits(zero, 8 - remainder_bits);
+            assert!((self.bits_written % 8) == 0);
+        }
+    }
+
     fn flush_bits(&mut self) {
         if self.scratch_bits > 0 {
             assert!(self.word_index < self.num_words);
@@ -206,13 +273,8 @@ impl<'a> BitWriter<'a> {
         }
     }
 
-    fn write_align(&mut self) {
-        let remainder_bits = self.bits_written % 8;
-        if  remainder_bits != 0 {
-            let zero = 0_u32;
-            self.write_bits(zero, 8 - remainder_bits);
-            assert!((self.bits_written % 8) == 0);
-        }
+    fn get_align_bits(&self) -> u32 {
+        (8 - self.bits_written % 8) % 8
     }
 }
 
